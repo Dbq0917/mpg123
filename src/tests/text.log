@@ -1,0 +1,11 @@
+Conversion of latin1: PASS
+Conversion of cp1252: PASS
+Conversion of utf8: PASS
+Conversion of utf16bom_be: PASS
+Conversion of utf16bom_le: PASS
+Conversion of utf16be: PASS
+Let's see what happens with a non-BOM little endian UTF-16 string: PASS
+Now some basic usage of chomp and strlen.
+
+PASS
+PASS src/tests/text (exit status: 0)

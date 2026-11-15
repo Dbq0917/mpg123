@@ -521,6 +521,7 @@ static void frame_fixed_reset(mpg123_handle *fr)
 	fr->playnum = -1;
 	fr->state_flags = FRAME_ACCURATE;
 	fr->silent_resync = 0;
+	fr->fuzzy_resync = 0;
 	fr->audio_start = 0;
 	fr->clip = 0;
 	fr->oldhead = 0;
@@ -672,6 +673,7 @@ static int64_t frame_fuzzy_find(mpg123_handle *fr, int64_t want_frame, int64_t* 
 		*get_frame = (int64_t) ((double)toc_entry/100. * fr->track_frames);
 		fr->state_flags &= ~FRAME_ACCURATE;
 		fr->silent_resync = 1;
+		INT123_frame_fuzzy_arm(fr);
 		/* Question: Is the TOC for whole file size (with/without ID3) or the "real" audio data only?
 		   ID3v1 info could also matter. */
 		ret = (int64_t) ((double)fr->xing_toc[toc_entry]/256.* fr->rdat.filelen);
@@ -681,6 +683,7 @@ static int64_t frame_fuzzy_find(mpg123_handle *fr, int64_t want_frame, int64_t* 
 		/* Query filelen here or not? */
 		fr->state_flags &= ~FRAME_ACCURATE; /* Fuzzy! */
 		fr->silent_resync = 1;
+		INT123_frame_fuzzy_arm(fr);
 		*get_frame = want_frame;
 		ret = (int64_t) (fr->audio_start+fr->mean_framesize*want_frame);
 	}
@@ -689,6 +692,103 @@ static int64_t frame_fuzzy_find(mpg123_handle *fr, int64_t want_frame, int64_t* 
 	,	want_frame, fr->track_frames, *get_frame, ret
 	,	(fr->rdat.filelen-fr->audio_start));
 	return ret;
+}
+
+/*
+	Estimate the frame number that lives at a given byte offset, using the
+	Xing VBR TOC. The TOC maps each whole percentage of the stream duration
+	to a byte fraction, so we invert it and interpolate between the two
+	surrounding entries. Only used to reconcile the frame counter after a
+	fuzzy seek parked us on a real frame header; it is an estimate, but a
+	consistent one that is bound to the actual byte position instead of a
+	byte-offset guess made before the resync.
+*/
+static int64_t frame_from_toc(mpg123_handle *fr, int64_t bytepos)
+{
+	double pos_frac;
+	double frac;
+	int low;
+	int high;
+	int64_t frame_low;
+	int64_t frame_high;
+	double frame_frac;
+
+	if(fr->xing_toc == NULL || fr->track_frames <= 0 || fr->rdat.filelen <= 0)
+	return -1;
+
+	pos_frac = (double)(bytepos - fr->audio_start)
+	         / (double)(fr->rdat.filelen - fr->audio_start);
+	/* Express the position as a 0..100 percentage matching the TOC domain. */
+	frac = pos_frac * 100.;
+	if(frac < 0.) frac = 0.;
+	if(frac > 100.) frac = 100.;
+
+	low  = (int)frac;
+	high = low + 1;
+	if(high > 99)
+	{
+		low = high = 99;
+		frac = 100.;
+	}
+
+	frame_low  = (int64_t)((double)low  / 100. * (double)fr->track_frames);
+	frame_high = (int64_t)((double)high / 100. * (double)fr->track_frames);
+	if(frame_high <= frame_low) return frame_low;
+
+	/* Linear interpolation of the frame fraction between the two entries. */
+	frame_frac = (frac - (double)low);
+	return frame_low + (int64_t)(frame_frac * (double)(frame_high - frame_low) + 0.5);
+}
+
+/*
+	Arm the post-resync reconciliation for a fuzzy seek. The seek jumps to an
+	estimated byte offset and then resyncs to the first real frame header; once
+	that header is accepted by the parser, the frame counter can be bound to
+	the real frame boundary instead of drifting on every repeated seek.
+*/
+void INT123_frame_fuzzy_arm(mpg123_handle *fr)
+{
+	fr->fuzzy_resync = 1;
+}
+
+/*
+	Called from the parser whenever a frame header was accepted, with the byte
+	offset of that header and the frame counter as it currently stands. When a
+	fuzzy seek is pending, this snaps the bookkeeping to the real boundary:
+
+	- With a Xing TOC, derive the frame number from the actual byte position.
+	- Without a TOC, the absolute frame number is not derivable from a byte
+	  position, so the sequential counter is kept and the exact frame index is
+	  left untouched (the guess must not pollute accurate positions).
+
+	From then on positions are anchored at a real frame header and repeated
+	seeks converge instead of accumulating an offset. Returns the corrected
+	frame number.
+*/
+int64_t INT123_frame_fuzzy_reconcile(mpg123_handle *fr, int64_t framepos, int64_t cur_frame)
+{
+	int64_t reconciled = cur_frame;
+	int verified = 0;
+
+	if(!fr->fuzzy_resync) return cur_frame;
+	fr->fuzzy_resync = 0;
+
+	if(fr->xing_toc != NULL)
+	{
+		int64_t toc_frame = frame_from_toc(fr, framepos);
+		if(toc_frame >= 0)
+		{
+			reconciled = toc_frame;
+			verified = 1;
+		}
+	}
+	/* Only re-enable accurate bookkeeping when the frame number can be bound
+	   to the real boundary. Without a TOC the estimate stays unverifiable, so
+	   it must not be fed into the exact frame index. */
+	if(verified) fr->state_flags |= FRAME_ACCURATE;
+	debug3("fuzzy reconcile at byte %" PRIi64 ": frame %" PRIi64
+		" -> %" PRIi64, framepos, cur_frame, reconciled);
+	return reconciled;
 }
 
 /*

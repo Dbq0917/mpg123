@@ -1,0 +1,41 @@
++ sweep=./src/tests/sweep.mp3
++ sweepsweep=src/tests/sweepsweep.mp3
++ stripsweep=src/tests/stripsweep.mp3
++ echo Test successful decoding as such:
+Test successful decoding as such:
++ src/tests/decode_fixed ./src/tests/sweep.mp3
++ wc -c
+openend fixed track with 44100 1 208
+Got first sample 5 and last sample -10198 out of 16348
+Got first sample -3843 and last sample 15073 out of 16348
++ c1=65392
++ echo Test that track is decoded only once:
+Test that track is decoded only once:
++ cat ./src/tests/sweep.mp3 ./src/tests/sweep.mp3
++ src/tests/decode_fixed src/tests/sweepsweep.mp3
++ wc -c
+Warning: Xing stream size off by more than 1%, fuzzy seeking may be even more fuzzy than by design!
+openend fixed track with 44100 1 208
+Got first sample 5 and last sample -10198 out of 16348
+Got first sample -3843 and last sample 15073 out of 16348
++ c2=65392
++ test 65392 = 65392
++ echo Test that stripped track is decoded twice:
+Test that stripped track is decoded twice:
++ src/mpg123-strip -n
+Warning: Xing stream size off by more than 1%, fuzzy seeking may be even more fuzzy than by design!
+
+Warning: Encountered more data after announced end of track (frame 40/40). Frankenstein!
++ src/tests/decode_fixed src/tests/stripsweep.mp3
++ wc -c
+openend fixed track with 44100 1 208
+Got first sample 0 and last sample -16205 out of 16348
+Got first sample -14092 and last sample -3514 out of 16348
+Got first sample -15884 and last sample 15280 out of 16348
+Got first sample 15294 and last sample -16324 out of 16348
+Got first sample -15286 and last sample -15959 out of 16348
++ c3=163480
++ test 163480 -gt 130784
++ echo PASS
+PASS
+PASS src/tests/decode_fixed.sh (exit status: 0)

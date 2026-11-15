@@ -1,0 +1,8 @@
+65536 output buffer size
+30106 minimal input samples to ensure we can fill that buffer
+65537 maximum output samples to result from the above
+30105 maximum input samples to not overflow that buffer
+65535 maximum output samples to result from the above
+100 resampler runs without issue
+PASS
+PASS src/tests/resample_buffer (exit status: 0)

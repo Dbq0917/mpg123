@@ -1,0 +1,5 @@
+Note: Illegal Audio-MPEG-Header 0x00000000 at offset 183.
+Note: Trying to resync...
+Note: Hit end of (available) data during resync.
+PASS
+PASS src/tests/id3dump-tmcl.sh (exit status: 0)

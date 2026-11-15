@@ -1,0 +1,6 @@
+Warning: Xing stream size off by more than 1%, fuzzy seeking may be even more fuzzy than by design!
+
+Warning: Real sample count 1152 differs from given gapless sample count 12723840. Frankenstein stream?
+[src/libmpg123/frame.c:INT123_frame_gapless_update():983] error: End sample count smaller than gapless end! (1152 < 12722710). Disabling gapless mode from now on.
+PASS
+PASS src/tests/id3dump-lotsofid3text.sh (exit status: 0)

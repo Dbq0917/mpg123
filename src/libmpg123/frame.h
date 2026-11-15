@@ -238,6 +238,10 @@ struct mpg123_handle_struct
 	int state_flags;
 	char silent_resync; /* Do not complain for the next n resyncs. */
 	unsigned char* xing_toc; /* The seek TOC from Xing header. */
+	/* Pending reconciliation of the frame counter after a fuzzy seek:
+	   the stream was parked at an estimated byte offset and resynced to a
+	   real frame header whose true frame number still has to be derived. */
+	char fuzzy_resync;
 
 	/* bitstream info; bsi */
 	int bitindex;
@@ -434,4 +438,7 @@ void INT123_frame_set_seek(mpg123_handle *fr, int64_t sp);
 int64_t INT123_frame_tell_seek(mpg123_handle *fr);
 /* Take a copy of the Xing VBR TOC for fuzzy seeking. */
 int INT123_frame_fill_toc(mpg123_handle *fr, unsigned char* in);
+/* Arm/perform frame-counter reconciliation after a fuzzy seek resync. */
+void INT123_frame_fuzzy_arm(mpg123_handle *fr);
+int64_t INT123_frame_fuzzy_reconcile(mpg123_handle *fr, int64_t framepos, int64_t cur_frame);
 #endif

@@ -1,0 +1,21 @@
+Testing plain ASCII world.
+string 0: PASS
+string 1: PASS
+string 2: PASS
+string 3: PASS
+Testing hacked UTF-8 world.
+string 0: PASS
+string 1: PASS
+string 2: PASS
+string 3: PASS
+Got locale, testing proper workings.
+string 0: PASS
+non-terminal non-filtering: PASS
+string 1: PASS
+non-terminal non-filtering: PASS
+string 2: PASS
+non-terminal non-filtering: PASS
+string 3: PASS
+non-terminal non-filtering: PASS
+PASS
+PASS src/tests/textprint (exit status: 0)

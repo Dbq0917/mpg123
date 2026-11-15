@@ -1,0 +1,6 @@
+End seek without (explicit) scanning: End seek with explicit scanning: length 44100 vs. pos 44100
+PASS
+length 44100 vs. pos 44100
+PASS
+PASS
+PASS src/tests/seek_whence.sh (exit status: 0)

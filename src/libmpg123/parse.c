@@ -640,6 +640,11 @@ init_resync:
 		fr->mean_framesize = ((fr->mean_frames-1)*fr->mean_framesize+INT123_compute_bpf(fr)) / fr->mean_frames ;
 	}
 	++fr->num; /* 0 for first frame! */
+	/* After a fuzzy seek we just parked on a real frame header. Bind the
+	   frame counter to that verified boundary (and re-enable accurate
+	   indexing) so repeated seeks do not keep drifting on byte estimates. */
+	if(fr->fuzzy_resync)
+	fr->num = INT123_frame_fuzzy_reconcile(fr, framepos, fr->num);
 	debug4("Frame %"PRIi64" %08lx %i, next filepos=%"PRIi64, fr->num, newhead, fr->hdr.framesize, fr->rd->tell(fr));
 	if(!(fr->state_flags & FRAME_FRANKENSTEIN) && (
 		(fr->track_frames > 0 && fr->num >= fr->track_frames)
@@ -719,6 +724,9 @@ read_frame_bad:
 	   Otherwise, the feeder would hold every dead old byte in memory until the first valid frame! */
 	if(fr->rd->forget != NULL) fr->rd->forget(fr);
 
+	/* A pending fuzzy reconciliation must not survive a failed frame read;
+	   the next good frame is unrelated to the estimated seek anchor. */
+	fr->fuzzy_resync = 0;
 	fr->silent_resync = 0;
 	if(fr->err == MPG123_OK) fr->err = MPG123_ERR_READER;
 	fr->halfphase = oldphase;
